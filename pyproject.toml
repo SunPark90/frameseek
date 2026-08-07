@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "frameseek"
+version = "0.1.0"
+description = "Evidence-grounded deep research over video with timestamp citations"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+  { name = "SunPark90" },
+]
+keywords = [
+  "video",
+  "deep-research",
+  "multimodal",
+  "vision-language-model",
+  "video-understanding",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Multimedia :: Video",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = []
+
+[project.optional-dependencies]
+smolvlm2 = [
+  "Pillow>=10.0",
+  "torch>=2.4",
+  "transformers>=4.49",
+]
+dev = [
+  "build>=1.2",
+  "ruff>=0.9",
+]
+
+[project.scripts]
+frameseek = "frameseek.cli:main"
+
+[project.urls]
+Repository = "https://github.com/SunPark90/frameseek"
+Issues = "https://github.com/SunPark90/frameseek/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
