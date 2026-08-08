@@ -16,3 +16,8 @@ entire source video unless a custom backend explicitly implements that behavior.
 
 Index files can contain captions and paths derived from private videos. Treat
 them as sensitive data and do not commit them to a public repository.
+
+Before a frame is sent to any backend, FrameSeek requires its path to stay
+inside the index directory and verifies its SHA-256 digest when the index
+provides one. Keep `index.json` and its `frames/` directory together; modifying
+an indexed frame invalidates that index by design.

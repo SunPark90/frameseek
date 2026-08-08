@@ -1,3 +1,4 @@
+import hashlib
 import tempfile
 import unittest
 from pathlib import Path
@@ -46,6 +47,7 @@ class PipelineTests(unittest.TestCase):
                     timestamp_seconds=float(number * 10),
                     path=f"frames/{number}.jpg",
                     caption=caption,
+                    sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
                 )
             )
         index = VideoIndex(
@@ -76,6 +78,34 @@ class PipelineTests(unittest.TestCase):
             research(self.index_path, "red ball", backend)
         result = research(self.index_path, "red ball", backend, allow_uncited=True)
         self.assertEqual(result.citations, ())
+
+    def test_research_rejects_frame_outside_index_directory(self) -> None:
+        nested = self.root / "nested"
+        nested.mkdir()
+        source_frame = self.root / "frames" / "2.jpg"
+        index = VideoIndex(
+            video=VideoMetadata(source="sample.mp4", duration_seconds=40.0),
+            frames=(
+                FrameRecord(
+                    id="f000002",
+                    timestamp_seconds=20.0,
+                    path="../frames/2.jpg",
+                    caption="dog with red ball in park",
+                    sha256=hashlib.sha256(source_frame.read_bytes()).hexdigest(),
+                ),
+            ),
+        )
+        index_path = nested / "index.json"
+        index.save(index_path)
+
+        with self.assertRaisesRegex(EvidenceError, "escapes the index directory"):
+            research(index_path, "red ball", FakeBackend(), top_k=1)
+
+    def test_research_rejects_modified_frame(self) -> None:
+        (self.root / "frames" / "2.jpg").write_bytes(b"tampered-image")
+
+        with self.assertRaisesRegex(EvidenceError, "failed SHA-256 verification"):
+            research(self.index_path, "red ball", FakeBackend(), top_k=1)
 
 
 if __name__ == "__main__":

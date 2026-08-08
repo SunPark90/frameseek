@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import hmac
 from pathlib import Path
 
 from .backends.base import PreparedFrame, ResearchBackend
@@ -26,7 +28,11 @@ def research(
         PreparedFrame(
             id=item.frame.id,
             timestamp_seconds=item.frame.timestamp_seconds,
-            path=_resolve_frame_path(source_path.parent, item.frame.path),
+            path=_resolve_frame_path(
+                source_path.parent,
+                item.frame.path,
+                expected_sha256=item.frame.sha256,
+            ),
             caption=item.frame.caption,
             retrieval_score=item.score,
         )
@@ -71,9 +77,34 @@ def research(
     )
 
 
-def _resolve_frame_path(index_dir: Path, frame_path: str) -> Path:
+def _resolve_frame_path(
+    index_dir: Path,
+    frame_path: str,
+    *,
+    expected_sha256: str | None = None,
+) -> Path:
     candidate = Path(frame_path)
-    resolved = candidate if candidate.is_absolute() else index_dir / candidate
+    if candidate.is_absolute():
+        raise EvidenceError(f"indexed frame path must be relative: {frame_path}")
+    index_root = index_dir.resolve()
+    resolved = (index_root / candidate).resolve()
+    if not resolved.is_relative_to(index_root):
+        raise EvidenceError(f"indexed frame escapes the index directory: {frame_path}")
     if not resolved.is_file():
         raise EvidenceError(f"indexed frame is missing: {resolved}")
-    return resolved.resolve()
+    if expected_sha256 is not None:
+        actual_sha256 = _sha256(resolved)
+        if not hmac.compare_digest(actual_sha256, expected_sha256.casefold()):
+            raise EvidenceError(f"indexed frame failed SHA-256 verification: {frame_path}")
+    return resolved
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    try:
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+    except OSError as exc:
+        raise EvidenceError(f"cannot verify indexed frame {path}: {exc}") from exc
+    return digest.hexdigest()
