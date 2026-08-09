@@ -50,6 +50,16 @@ def parse_fraction(value: str | None) -> float | None:
     return result
 
 
+def _parse_positive_float(value: Any) -> float | None:
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(result) or result <= 0:
+        return None
+    return result
+
+
 class FFmpegMediaTool:
     def __init__(self, ffmpeg: str = "ffmpeg", ffprobe: str = "ffprobe") -> None:
         self.ffmpeg = ffmpeg
@@ -87,7 +97,11 @@ class FFmpegMediaTool:
                 if item.get("codec_type") == "video"
             )
             format_data = payload.get("format", {})
-            duration = float(stream.get("duration") or format_data["duration"])
+            duration = _parse_positive_float(stream.get("duration"))
+            if duration is None:
+                duration = _parse_positive_float(format_data.get("duration"))
+            if duration is None:
+                raise ValueError("no positive finite duration")
             width = int(stream["width"]) if stream.get("width") else None
             height = int(stream["height"]) if stream.get("height") else None
             fps = parse_fraction(stream.get("avg_frame_rate") or stream.get("r_frame_rate"))

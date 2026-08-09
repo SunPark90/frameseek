@@ -1,6 +1,11 @@
+import json
+import subprocess
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
-from frameseek.media import build_sample_timestamps, parse_fraction
+from frameseek.media import FFmpegMediaTool, build_sample_timestamps, parse_fraction
 
 
 class MediaTests(unittest.TestCase):
@@ -27,6 +32,37 @@ class MediaTests(unittest.TestCase):
         self.assertEqual(parse_fraction("25"), 25.0)
         self.assertIsNone(parse_fraction("0/0"))
         self.assertIsNone(parse_fraction("bad"))
+
+    def test_probe_uses_container_duration_when_stream_duration_is_unavailable(self) -> None:
+        payload = {
+            "streams": [
+                {
+                    "codec_type": "video",
+                    "duration": "N/A",
+                    "width": 640,
+                    "height": 360,
+                    "avg_frame_rate": "30/1",
+                }
+            ],
+            "format": {"duration": "12.5"},
+        }
+        completed = subprocess.CompletedProcess(
+            args=["ffprobe"],
+            returncode=0,
+            stdout=json.dumps(payload),
+            stderr="",
+        )
+        media = FFmpegMediaTool()
+        with tempfile.TemporaryDirectory() as directory:
+            video = Path(directory) / "sample.mp4"
+            video.write_bytes(b"fake video")
+            with (
+                patch.object(media, "check_dependencies"),
+                patch.object(media, "_run", return_value=completed),
+            ):
+                metadata = media.probe(video)
+
+        self.assertEqual(metadata.duration_seconds, 12.5)
 
 
 if __name__ == "__main__":
