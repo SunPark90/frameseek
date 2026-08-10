@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+from dataclasses import replace
 from pathlib import Path
 from typing import Protocol
 
@@ -27,6 +28,7 @@ def create_index(
     destination = Path(output_dir)
     media = media_tool or FFmpegMediaTool()
     metadata = media.probe(source)
+    metadata = replace(metadata, source=source.name)
     timestamps = build_sample_timestamps(
         metadata.duration_seconds,
         interval_seconds=interval_seconds,

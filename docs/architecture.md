@@ -29,10 +29,11 @@ explicitly tell the model not to follow instructions found inside the video.
 
 ## Index schema
 
-Version 1 stores immutable source metadata and ordered frame records. Frame paths
-are relative to the index directory, which makes an index portable as one folder.
-Each frame includes a SHA-256 digest so future releases can verify media integrity
-and cache model results safely.
+Version 1 stores immutable source metadata and ordered frame records. The source
+field contains only the video's filename so an index does not expose the original
+directory layout. Frame paths are relative to the index directory, which makes an
+index portable as one folder. Each frame includes a SHA-256 digest so future
+releases can verify media integrity and cache model results safely.
 
 ## Backend contract
 

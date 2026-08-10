@@ -57,6 +57,8 @@ class IndexerTests(unittest.TestCase):
             self.assertTrue(all(frame.caption for frame in index.frames))
             self.assertTrue(all(frame.sha256 for frame in index.frames))
             self.assertTrue(all(not Path(frame.path).is_absolute() for frame in index.frames))
+            self.assertEqual(index.video.source, "sample.mp4")
+            self.assertNotIn(str(root), index_path.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":
