@@ -13,6 +13,8 @@ affected version, reproduction steps, impact, and any suggested mitigation.
 FrameSeek processes videos locally by default. A cloud backend sends selected
 frames and the question to the configured API endpoint. It never uploads the
 entire source video unless a custom backend explicitly implements that behavior.
+FrameSeek refuses to send an API key over plain HTTP to a non-loopback endpoint;
+use HTTPS for remote model servers.
 
 Index files can contain captions derived from private videos. New indexes store
 only the source video's filename, but older indexes may contain its full path.

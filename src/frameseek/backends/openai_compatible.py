@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import ipaddress
 import json
 import mimetypes
 import os
@@ -117,8 +118,17 @@ class OpenAICompatibleBackend(ResearchBackend):
         if not endpoint.endswith("/chat/completions"):
             endpoint = f"{endpoint}/chat/completions"
         api_key = os.environ.get(self.api_key_env, "").strip()
-        hostname = (urlparse(endpoint).hostname or "").casefold()
-        if not api_key and hostname not in {"localhost", "127.0.0.1", "::1"}:
+        parsed_endpoint = urlparse(endpoint)
+        scheme = parsed_endpoint.scheme.casefold()
+        hostname = (parsed_endpoint.hostname or "").casefold()
+        if scheme not in {"http", "https"} or not hostname:
+            raise BackendError("model API endpoint must be an HTTP or HTTPS URL")
+        is_loopback = _is_loopback_host(hostname)
+        if api_key and scheme != "https" and not is_loopback:
+            raise BackendError(
+                "refusing to send an API key over insecure HTTP to a non-loopback endpoint"
+            )
+        if not api_key and not is_loopback:
             raise BackendError(f"environment variable {self.api_key_env} is not set")
         payload = {
             "model": self.model,
@@ -211,3 +221,12 @@ def _image_data_url(path: Path) -> str:
     media_type = mimetypes.guess_type(path.name)[0] or "image/jpeg"
     encoded = base64.b64encode(raw).decode("ascii")
     return f"data:{media_type};base64,{encoded}"
+
+
+def _is_loopback_host(hostname: str) -> bool:
+    if hostname == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(hostname).is_loopback
+    except ValueError:
+        return False
