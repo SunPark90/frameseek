@@ -61,9 +61,17 @@ def _parse_positive_float(value: Any) -> float | None:
 
 
 class FFmpegMediaTool:
-    def __init__(self, ffmpeg: str = "ffmpeg", ffprobe: str = "ffprobe") -> None:
+    def __init__(
+        self,
+        ffmpeg: str = "ffmpeg",
+        ffprobe: str = "ffprobe",
+        timeout_seconds: float = 300.0,
+    ) -> None:
+        if not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
+            raise ValueError("timeout_seconds must be positive and finite")
         self.ffmpeg = ffmpeg
         self.ffprobe = ffprobe
+        self.timeout_seconds = timeout_seconds
 
     def check_dependencies(self) -> None:
         missing = [name for name in (self.ffmpeg, self.ffprobe) if shutil.which(name) is None]
@@ -160,8 +168,7 @@ class FFmpegMediaTool:
             outputs.append(output)
         return tuple(outputs)
 
-    @staticmethod
-    def _run(command: list[str], operation: str) -> subprocess.CompletedProcess[str]:
+    def _run(self, command: list[str], operation: str) -> subprocess.CompletedProcess[str]:
         try:
             completed = subprocess.run(
                 command,
@@ -170,7 +177,12 @@ class FFmpegMediaTool:
                 text=True,
                 encoding="utf-8",
                 errors="replace",
+                timeout=self.timeout_seconds,
             )
+        except subprocess.TimeoutExpired as exc:
+            raise MediaError(
+                f"{operation} timed out after {self.timeout_seconds:g} seconds"
+            ) from exc
         except OSError as exc:
             raise MediaError(f"cannot start {operation}: {exc}") from exc
         if completed.returncode != 0:

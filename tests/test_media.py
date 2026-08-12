@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from frameseek.errors import MediaError
 from frameseek.media import FFmpegMediaTool, build_sample_timestamps, parse_fraction
 
 
@@ -63,6 +64,23 @@ class MediaTests(unittest.TestCase):
                 metadata = media.probe(video)
 
         self.assertEqual(metadata.duration_seconds, 12.5)
+
+    def test_media_tool_rejects_invalid_timeout(self) -> None:
+        with self.assertRaises(ValueError):
+            FFmpegMediaTool(timeout_seconds=0)
+
+    def test_media_command_times_out(self) -> None:
+        media = FFmpegMediaTool(timeout_seconds=1.5)
+        with (
+            patch(
+                "frameseek.media.subprocess.run",
+                side_effect=subprocess.TimeoutExpired(["ffprobe"], 1.5),
+            ) as run,
+            self.assertRaisesRegex(MediaError, "timed out after 1.5 seconds"),
+        ):
+            media._run(["ffprobe"], "ffprobe")
+
+        self.assertEqual(run.call_args.kwargs["timeout"], 1.5)
 
 
 if __name__ == "__main__":
