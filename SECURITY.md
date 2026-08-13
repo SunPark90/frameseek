@@ -15,6 +15,8 @@ frames and the question to the configured API endpoint. It never uploads the
 entire source video unless a custom backend explicitly implements that behavior.
 FrameSeek refuses to send an API key over plain HTTP to a non-loopback endpoint;
 use HTTPS for remote model servers.
+Model API success responses are capped at 1 MiB by default, and error details
+are truncated, so an untrusted endpoint cannot return an unbounded body.
 
 Index files can contain captions derived from private videos. New indexes store
 only the source video's filename, but older indexes may contain its full path.

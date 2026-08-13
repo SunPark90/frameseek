@@ -37,13 +37,17 @@ class OpenAICompatibleBackend(ResearchBackend):
         base_url: str = "https://api.openai.com/v1",
         api_key_env: str = "OPENAI_API_KEY",
         timeout_seconds: float = 120.0,
+        response_limit_bytes: int = 1024 * 1024,
     ) -> None:
         if not model:
             raise ValueError("model is required")
+        if response_limit_bytes <= 0:
+            raise ValueError("response_limit_bytes must be positive")
         self.model = model
         self.base_url = base_url.rstrip("/")
         self.api_key_env = api_key_env
         self.timeout_seconds = timeout_seconds
+        self.response_limit_bytes = response_limit_bytes
 
     def caption_frame(self, path: Path, timestamp_seconds: float) -> str:
         content = [
@@ -147,9 +151,17 @@ class OpenAICompatibleBackend(ResearchBackend):
         )
         try:
             with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
-                body = response.read().decode("utf-8")
+                raw_body = response.read(self.response_limit_bytes + 1)
+                if len(raw_body) > self.response_limit_bytes:
+                    raise BackendProtocolError(
+                        f"model API response exceeds {self.response_limit_bytes} bytes"
+                    )
+                body = raw_body.decode("utf-8")
         except urllib.error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")[:1000]
+            raw_detail = exc.read(1001)
+            detail = raw_detail[:1000].decode("utf-8", errors="replace")
+            if len(raw_detail) > 1000:
+                detail += "... [truncated]"
             raise BackendError(f"model API returned HTTP {exc.code}: {detail}") from exc
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             raise BackendError(f"model API request failed: {exc}") from exc

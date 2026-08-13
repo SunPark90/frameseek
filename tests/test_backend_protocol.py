@@ -1,3 +1,4 @@
+import io
 import os
 import unittest
 from unittest.mock import patch
@@ -52,6 +53,26 @@ class BackendProtocolTests(unittest.TestCase):
             backend._chat(messages=[], max_tokens=1)
 
         urlopen.assert_not_called()
+
+    def test_rejects_oversized_model_response(self) -> None:
+        backend = OpenAICompatibleBackend(
+            model="test-model",
+            response_limit_bytes=16,
+        )
+        response = io.BytesIO(b"{" + b"x" * 16)
+        with (
+            patch.dict(os.environ, {"OPENAI_API_KEY": "secret"}),
+            patch(
+                "frameseek.backends.openai_compatible.urllib.request.urlopen",
+                return_value=response,
+            ),
+            self.assertRaisesRegex(BackendProtocolError, "exceeds 16 bytes"),
+        ):
+            backend._chat(messages=[], max_tokens=1)
+
+    def test_rejects_invalid_response_limit(self) -> None:
+        with self.assertRaises(ValueError):
+            OpenAICompatibleBackend(model="test-model", response_limit_bytes=0)
 
 
 if __name__ == "__main__":
