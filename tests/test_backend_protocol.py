@@ -74,6 +74,22 @@ class BackendProtocolTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             OpenAICompatibleBackend(model="test-model", response_limit_bytes=0)
 
+    def test_api_key_is_not_forwarded_across_redirects(self) -> None:
+        backend = OpenAICompatibleBackend(model="test-model")
+        response = io.BytesIO(b'{"choices":[]}')
+        with (
+            patch.dict(os.environ, {"OPENAI_API_KEY": "secret"}),
+            patch(
+                "frameseek.backends.openai_compatible.urllib.request.urlopen",
+                return_value=response,
+            ) as urlopen,
+        ):
+            backend._chat(messages=[], max_tokens=1)
+
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.unredirected_hdrs["Authorization"], "Bearer secret")
+        self.assertNotIn("Authorization", request.headers)
+
 
 if __name__ == "__main__":
     unittest.main()

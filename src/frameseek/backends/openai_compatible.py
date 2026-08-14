@@ -141,14 +141,16 @@ class OpenAICompatibleBackend(ResearchBackend):
             "max_tokens": max_tokens,
         }
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
-        if api_key:
-            headers["Authorization"] = f"Bearer {api_key}"
         request = urllib.request.Request(
             endpoint,
             data=json.dumps(payload).encode("utf-8"),
             headers=headers,
             method="POST",
         )
+        if api_key:
+            # Unredirected headers are sent to the configured endpoint but are not
+            # copied by urllib when a server redirects to another URL.
+            request.add_unredirected_header("Authorization", f"Bearer {api_key}")
         try:
             with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
                 raw_body = response.read(self.response_limit_bytes + 1)
