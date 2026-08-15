@@ -28,6 +28,8 @@ Before a frame is sent to any backend, FrameSeek requires its path to stay
 inside the index directory and verifies its SHA-256 digest when the index
 provides one. Keep `index.json` and its `frames/` directory together; modifying
 an indexed frame invalidates that index by design.
+Malformed SHA-256 fields are rejected while the index is loaded, before any
+referenced frame is opened.
 
 FFmpeg and ffprobe subprocesses have a bounded runtime so malformed media cannot
 stall indexing indefinitely. SDK users can adjust the limit with

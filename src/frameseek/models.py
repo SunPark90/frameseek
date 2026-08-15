@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,6 +12,7 @@ from typing import Any
 from .errors import IndexFormatError
 
 SCHEMA_VERSION = 1
+SHA256_PATTERN = re.compile(r"[0-9a-fA-F]{64}\Z")
 
 
 def utc_now() -> str:
@@ -67,6 +69,8 @@ class FrameRecord:
             raise IndexFormatError(f"frame {self.id!r} has an invalid timestamp")
         if self.timestamp_seconds > duration_seconds + 0.001:
             raise IndexFormatError(f"frame {self.id!r} is outside the video duration")
+        if self.sha256 is not None and SHA256_PATTERN.fullmatch(self.sha256) is None:
+            raise IndexFormatError(f"frame {self.id!r} has an invalid SHA-256 digest")
 
 
 @dataclass(frozen=True)

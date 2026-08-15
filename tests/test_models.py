@@ -44,6 +44,21 @@ class ModelTests(unittest.TestCase):
         with self.assertRaisesRegex(IndexFormatError, "outside the video duration"):
             index.validate()
 
+    def test_index_rejects_malformed_frame_digest(self) -> None:
+        index = VideoIndex(
+            video=VideoMetadata(source="sample.mp4", duration_seconds=2.0),
+            frames=(
+                FrameRecord(
+                    id="f1",
+                    timestamp_seconds=1.0,
+                    path="a.jpg",
+                    sha256="not-a-sha256-digest",
+                ),
+            ),
+        )
+        with self.assertRaisesRegex(IndexFormatError, "invalid SHA-256 digest"):
+            VideoIndex.from_dict(index.to_dict())
+
 
 if __name__ == "__main__":
     unittest.main()
