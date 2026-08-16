@@ -1,4 +1,5 @@
 import io
+import math
 import os
 import unittest
 from unittest.mock import patch
@@ -73,6 +74,17 @@ class BackendProtocolTests(unittest.TestCase):
     def test_rejects_invalid_response_limit(self) -> None:
         with self.assertRaises(ValueError):
             OpenAICompatibleBackend(model="test-model", response_limit_bytes=0)
+
+    def test_rejects_invalid_request_timeout(self) -> None:
+        for timeout_seconds in (0, -1, math.inf, math.nan):
+            with (
+                self.subTest(timeout_seconds=timeout_seconds),
+                self.assertRaisesRegex(ValueError, "positive and finite"),
+            ):
+                OpenAICompatibleBackend(
+                    model="test-model",
+                    timeout_seconds=timeout_seconds,
+                )
 
     def test_api_key_is_not_forwarded_across_redirects(self) -> None:
         backend = OpenAICompatibleBackend(model="test-model")

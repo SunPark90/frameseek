@@ -19,6 +19,8 @@ Authentication headers are scoped to the configured endpoint and are not
 forwarded when that endpoint redirects to another URL.
 Model API success responses are capped at 1 MiB by default, and error details
 are truncated, so an untrusted endpoint cannot return an unbounded body.
+Model API requests also use a positive, finite timeout so an unavailable
+endpoint cannot stall inference indefinitely.
 
 Index files can contain captions derived from private videos. New indexes store
 only the source video's filename, but older indexes may contain its full path.

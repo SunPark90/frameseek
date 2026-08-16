@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import ipaddress
 import json
+import math
 import mimetypes
 import os
 import urllib.error
@@ -41,6 +42,8 @@ class OpenAICompatibleBackend(ResearchBackend):
     ) -> None:
         if not model:
             raise ValueError("model is required")
+        if not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
+            raise ValueError("timeout_seconds must be positive and finite")
         if response_limit_bytes <= 0:
             raise ValueError("response_limit_bytes must be positive")
         self.model = model
