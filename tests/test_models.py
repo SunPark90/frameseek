@@ -2,6 +2,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from frameseek.errors import IndexFormatError
 from frameseek.models import FrameRecord, VideoIndex, VideoMetadata, format_timestamp
@@ -58,6 +59,23 @@ class ModelTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(IndexFormatError, "invalid SHA-256 digest"):
             VideoIndex.from_dict(index.to_dict())
+
+    def test_index_load_rejects_oversized_file(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "index.json"
+            path.write_bytes(b" " * 33)
+            with (
+                patch("frameseek.models.MAX_INDEX_BYTES", 32),
+                self.assertRaisesRegex(IndexFormatError, "exceeds 32 bytes"),
+            ):
+                VideoIndex.load(path)
+
+    def test_index_load_rejects_invalid_utf8(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "index.json"
+            path.write_bytes(b"\xff")
+            with self.assertRaisesRegex(IndexFormatError, "not valid UTF-8"):
+                VideoIndex.load(path)
 
 
 if __name__ == "__main__":

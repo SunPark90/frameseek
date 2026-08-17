@@ -12,6 +12,7 @@ from typing import Any
 from .errors import IndexFormatError
 
 SCHEMA_VERSION = 1
+MAX_INDEX_BYTES = 16 * 1024 * 1024
 SHA256_PATTERN = re.compile(r"[0-9a-fA-F]{64}\Z")
 
 
@@ -154,9 +155,16 @@ class VideoIndex:
     def load(cls, path: str | Path) -> VideoIndex:
         source = Path(path)
         try:
-            data = json.loads(source.read_text(encoding="utf-8"))
+            with source.open("rb") as handle:
+                raw = handle.read(MAX_INDEX_BYTES + 1)
         except OSError as exc:
             raise IndexFormatError(f"cannot read index {source}: {exc}") from exc
+        if len(raw) > MAX_INDEX_BYTES:
+            raise IndexFormatError(f"index exceeds {MAX_INDEX_BYTES} bytes: {source}")
+        try:
+            data = json.loads(raw.decode("utf-8"))
+        except UnicodeDecodeError as exc:
+            raise IndexFormatError(f"index is not valid UTF-8: {source}") from exc
         except json.JSONDecodeError as exc:
             raise IndexFormatError(f"invalid JSON in {source}: {exc}") from exc
         if not isinstance(data, dict):
