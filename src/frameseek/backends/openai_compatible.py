@@ -27,6 +27,8 @@ Cite only frame IDs in the supplied manifest.
 If the frames are insufficient, say so in the answer and cite the frame(s) showing the limitation.
 Do not wrap the JSON in Markdown."""
 
+MAX_FRAME_BYTES = 20 * 1024 * 1024
+
 
 class OpenAICompatibleBackend(ResearchBackend):
     name = "openai-compatible"
@@ -232,9 +234,12 @@ def _message_text(payload: dict[str, Any]) -> str:
 
 def _image_data_url(path: Path) -> str:
     try:
-        raw = path.read_bytes()
+        with path.open("rb") as handle:
+            raw = handle.read(MAX_FRAME_BYTES + 1)
     except OSError as exc:
         raise BackendError(f"cannot read frame {path}: {exc}") from exc
+    if len(raw) > MAX_FRAME_BYTES:
+        raise BackendError(f"frame exceeds {MAX_FRAME_BYTES} bytes: {path}")
     media_type = mimetypes.guess_type(path.name)[0] or "image/jpeg"
     encoded = base64.b64encode(raw).decode("ascii")
     return f"data:{media_type};base64,{encoded}"

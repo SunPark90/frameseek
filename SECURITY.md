@@ -21,6 +21,8 @@ Model API success responses are capped at 1 MiB by default, and error details
 are truncated, so an untrusted endpoint cannot return an unbounded body.
 Model API requests also use a positive, finite timeout so an unavailable
 endpoint cannot stall inference indefinitely.
+The OpenAI-compatible backend rejects frames larger than 20 MiB before Base64
+encoding, bounding per-frame memory and request growth.
 
 Index files can contain captions derived from private videos. New indexes store
 only the source video's filename, but older indexes may contain its full path.

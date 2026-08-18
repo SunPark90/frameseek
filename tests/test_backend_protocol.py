@@ -1,10 +1,16 @@
 import io
 import math
 import os
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
-from frameseek.backends.openai_compatible import OpenAICompatibleBackend, parse_backend_answer
+from frameseek.backends.openai_compatible import (
+    OpenAICompatibleBackend,
+    _image_data_url,
+    parse_backend_answer,
+)
 from frameseek.errors import BackendError, BackendProtocolError
 
 
@@ -101,6 +107,16 @@ class BackendProtocolTests(unittest.TestCase):
         request = urlopen.call_args.args[0]
         self.assertEqual(request.unredirected_hdrs["Authorization"], "Bearer secret")
         self.assertNotIn("Authorization", request.headers)
+
+    def test_rejects_oversized_frame_before_encoding(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "frame.jpg"
+            path.write_bytes(b"image")
+            with (
+                patch("frameseek.backends.openai_compatible.MAX_FRAME_BYTES", 4),
+                self.assertRaisesRegex(BackendError, "exceeds 4 bytes"),
+            ):
+                _image_data_url(path)
 
 
 if __name__ == "__main__":
