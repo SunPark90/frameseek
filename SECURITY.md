@@ -16,7 +16,8 @@ entire source video unless a custom backend explicitly implements that behavior.
 FrameSeek refuses to send an API key over plain HTTP to a non-loopback endpoint;
 use HTTPS for remote model servers.
 Authentication headers are scoped to the configured endpoint and are not
-forwarded when that endpoint redirects to another URL.
+forwarded on redirects. Redirects to a different origin are rejected so the
+selected frames and question stay within the configured API origin.
 Model API success responses are capped at 1 MiB by default, and error details
 are truncated, so an untrusted endpoint cannot return an unbounded body.
 Model API requests also use a positive, finite timeout so an unavailable

@@ -30,6 +30,33 @@ Do not wrap the JSON in Markdown."""
 MAX_FRAME_BYTES = 20 * 1024 * 1024
 
 
+class _SameOriginRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(
+        self,
+        request: urllib.request.Request,
+        file_pointer: Any,
+        code: int,
+        message: str,
+        headers: Any,
+        new_url: str,
+    ) -> urllib.request.Request | None:
+        source_origin = _url_origin(request.full_url)
+        destination_origin = _url_origin(new_url)
+        if destination_origin is None or destination_origin != source_origin:
+            raise BackendError("refusing model API redirect to a different origin")
+        return super().redirect_request(
+            request,
+            file_pointer,
+            code,
+            message,
+            headers,
+            new_url,
+        )
+
+
+_MODEL_API_OPENER = urllib.request.build_opener(_SameOriginRedirectHandler())
+
+
 class OpenAICompatibleBackend(ResearchBackend):
     name = "openai-compatible"
 
@@ -157,7 +184,7 @@ class OpenAICompatibleBackend(ResearchBackend):
             # copied by urllib when a server redirects to another URL.
             request.add_unredirected_header("Authorization", f"Bearer {api_key}")
         try:
-            with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
+            with _MODEL_API_OPENER.open(request, timeout=self.timeout_seconds) as response:
                 raw_body = response.read(self.response_limit_bytes + 1)
                 if len(raw_body) > self.response_limit_bytes:
                     raise BackendProtocolError(
@@ -252,3 +279,18 @@ def _is_loopback_host(hostname: str) -> bool:
         return ipaddress.ip_address(hostname).is_loopback
     except ValueError:
         return False
+
+
+def _url_origin(url: str) -> tuple[str, str, int] | None:
+    parsed = urlparse(url)
+    scheme = parsed.scheme.casefold()
+    hostname = (parsed.hostname or "").casefold()
+    if scheme not in {"http", "https"} or not hostname:
+        return None
+    try:
+        port = parsed.port
+    except ValueError:
+        return None
+    if port is None:
+        port = 443 if scheme == "https" else 80
+    return scheme, hostname, port

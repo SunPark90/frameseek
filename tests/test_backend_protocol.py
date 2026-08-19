@@ -3,12 +3,14 @@ import math
 import os
 import tempfile
 import unittest
+import urllib.request
 from pathlib import Path
 from unittest.mock import patch
 
 from frameseek.backends.openai_compatible import (
     OpenAICompatibleBackend,
     _image_data_url,
+    _SameOriginRedirectHandler,
     parse_backend_answer,
 )
 from frameseek.errors import BackendError, BackendProtocolError
@@ -40,12 +42,12 @@ class BackendProtocolTests(unittest.TestCase):
         )
         with (
             patch.dict(os.environ, {"OPENAI_API_KEY": "secret"}),
-            patch("frameseek.backends.openai_compatible.urllib.request.urlopen") as urlopen,
+            patch("frameseek.backends.openai_compatible._MODEL_API_OPENER.open") as open_api,
             self.assertRaisesRegex(BackendError, "insecure HTTP"),
         ):
             backend._chat(messages=[], max_tokens=1)
 
-        urlopen.assert_not_called()
+        open_api.assert_not_called()
 
     def test_rejects_non_http_endpoint_before_network_request(self) -> None:
         backend = OpenAICompatibleBackend(
@@ -54,12 +56,12 @@ class BackendProtocolTests(unittest.TestCase):
         )
         with (
             patch.dict(os.environ, {"OPENAI_API_KEY": "secret"}),
-            patch("frameseek.backends.openai_compatible.urllib.request.urlopen") as urlopen,
+            patch("frameseek.backends.openai_compatible._MODEL_API_OPENER.open") as open_api,
             self.assertRaisesRegex(BackendError, "HTTP or HTTPS"),
         ):
             backend._chat(messages=[], max_tokens=1)
 
-        urlopen.assert_not_called()
+        open_api.assert_not_called()
 
     def test_rejects_oversized_model_response(self) -> None:
         backend = OpenAICompatibleBackend(
@@ -70,7 +72,7 @@ class BackendProtocolTests(unittest.TestCase):
         with (
             patch.dict(os.environ, {"OPENAI_API_KEY": "secret"}),
             patch(
-                "frameseek.backends.openai_compatible.urllib.request.urlopen",
+                "frameseek.backends.openai_compatible._MODEL_API_OPENER.open",
                 return_value=response,
             ),
             self.assertRaisesRegex(BackendProtocolError, "exceeds 16 bytes"),
@@ -98,15 +100,32 @@ class BackendProtocolTests(unittest.TestCase):
         with (
             patch.dict(os.environ, {"OPENAI_API_KEY": "secret"}),
             patch(
-                "frameseek.backends.openai_compatible.urllib.request.urlopen",
+                "frameseek.backends.openai_compatible._MODEL_API_OPENER.open",
                 return_value=response,
-            ) as urlopen,
+            ) as open_api,
         ):
             backend._chat(messages=[], max_tokens=1)
 
-        request = urlopen.call_args.args[0]
+        request = open_api.call_args.args[0]
         self.assertEqual(request.unredirected_hdrs["Authorization"], "Bearer secret")
         self.assertNotIn("Authorization", request.headers)
+
+    def test_rejects_cross_origin_model_api_redirect(self) -> None:
+        handler = _SameOriginRedirectHandler()
+        request = urllib.request.Request(
+            "https://models.example.com/v1/chat/completions",
+            data=b"{}",
+            method="POST",
+        )
+        with self.assertRaisesRegex(BackendError, "different origin"):
+            handler.redirect_request(
+                request,
+                None,
+                302,
+                "Found",
+                {},
+                "https://collector.example/upload",
+            )
 
     def test_rejects_oversized_frame_before_encoding(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
