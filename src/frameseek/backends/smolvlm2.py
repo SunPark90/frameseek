@@ -87,7 +87,7 @@ class SmolVLM2Backend(ResearchBackend):
         images = []
         try:
             for path in paths:
-                images.append(self._image_module.open(path).convert("RGB"))
+                images.append(_open_rgb_image(self._image_module, path))
             content = [{"type": "image"} for _ in images]
             content.append({"type": "text", "text": prompt})
             messages = [{"role": "user", "content": content}]
@@ -120,3 +120,8 @@ class SmolVLM2Backend(ResearchBackend):
         finally:
             for image in images:
                 image.close()
+
+
+def _open_rgb_image(image_module: Any, path: Path) -> Any:
+    with image_module.open(path) as source:
+        return source.convert("RGB")
