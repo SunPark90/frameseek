@@ -77,6 +77,22 @@ class ModelTests(unittest.TestCase):
             with self.assertRaisesRegex(IndexFormatError, "not valid UTF-8"):
                 VideoIndex.load(path)
 
+    def test_index_save_cleans_up_temporary_file_after_failure(self) -> None:
+        index = VideoIndex(
+            video=VideoMetadata(source="sample.mp4", duration_seconds=10.0),
+            frames=(FrameRecord(id="f000001", timestamp_seconds=1.0, path="frame.jpg"),),
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / "index.json"
+            with (
+                patch("pathlib.Path.replace", side_effect=OSError("destination locked")),
+                self.assertRaisesRegex(IndexFormatError, "cannot write index"),
+            ):
+                index.save(path)
+
+            self.assertEqual(list(root.glob(".index.json.*.tmp")), [])
+
 
 if __name__ == "__main__":
     unittest.main()

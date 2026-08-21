@@ -4,6 +4,8 @@ import json
 import math
 import os
 import re
+import tempfile
+from contextlib import suppress
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -112,12 +114,29 @@ class VideoIndex:
         self.validate()
         destination = Path(path)
         destination.parent.mkdir(parents=True, exist_ok=True)
-        temporary = destination.with_name(f".{destination.name}.{os.getpid()}.tmp")
-        temporary.write_text(
-            json.dumps(self.to_dict(), ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
-        temporary.replace(destination)
+        payload = json.dumps(self.to_dict(), ensure_ascii=False, indent=2) + "\n"
+        temporary: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                newline="\n",
+                dir=destination.parent,
+                prefix=f".{destination.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as handle:
+                temporary = Path(handle.name)
+                handle.write(payload)
+                handle.flush()
+                os.fsync(handle.fileno())
+            temporary.replace(destination)
+        except OSError as exc:
+            raise IndexFormatError(f"cannot write index {destination}: {exc}") from exc
+        finally:
+            if temporary is not None:
+                with suppress(OSError):
+                    temporary.unlink(missing_ok=True)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> VideoIndex:
