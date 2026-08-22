@@ -10,6 +10,22 @@ from .models import ResearchAnswer, ResearchCitation, VideoIndex
 from .retrieval import rank_frames
 
 
+def load_verified_index(index_path: str | Path) -> VideoIndex:
+    source_path = Path(index_path)
+    index = VideoIndex.load(source_path)
+    for frame in index.frames:
+        if frame.sha256 is None:
+            raise EvidenceError(
+                f"cannot verify indexed frame without a SHA-256 digest: {frame.path}"
+            )
+        _resolve_frame_path(
+            source_path.parent,
+            frame.path,
+            expected_sha256=frame.sha256,
+        )
+    return index
+
+
 def research(
     index_path: str | Path,
     question: str,

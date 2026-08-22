@@ -6,7 +6,7 @@ from pathlib import Path
 from frameseek.backends.base import BackendAnswer, EvidenceRef, PreparedFrame, ResearchBackend
 from frameseek.errors import EvidenceError
 from frameseek.models import FrameRecord, VideoIndex, VideoMetadata
-from frameseek.pipeline import research
+from frameseek.pipeline import load_verified_index, research
 
 
 class FakeBackend(ResearchBackend):
@@ -106,6 +106,28 @@ class PipelineTests(unittest.TestCase):
 
         with self.assertRaisesRegex(EvidenceError, "failed SHA-256 verification"):
             research(self.index_path, "red ball", FakeBackend(), top_k=1)
+
+    def test_verified_index_checks_every_frame(self) -> None:
+        (self.root / "frames" / "3.jpg").write_bytes(b"tampered-image")
+
+        with self.assertRaisesRegex(EvidenceError, "failed SHA-256 verification"):
+            load_verified_index(self.index_path)
+
+    def test_verified_index_requires_frame_digests(self) -> None:
+        index = VideoIndex(
+            video=VideoMetadata(source="sample.mp4", duration_seconds=40.0),
+            frames=(
+                FrameRecord(
+                    id="f000001",
+                    timestamp_seconds=10.0,
+                    path="frames/1.jpg",
+                ),
+            ),
+        )
+        index.save(self.index_path)
+
+        with self.assertRaisesRegex(EvidenceError, "without a SHA-256 digest"):
+            load_verified_index(self.index_path)
 
 
 if __name__ == "__main__":

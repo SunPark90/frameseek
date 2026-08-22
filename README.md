@@ -53,6 +53,7 @@ Create an index without making any model calls:
 ```bash
 frameseek index ./meeting.mp4 --interval 20 --max-frames 24
 frameseek inspect ./meeting.frameseek/index.json
+frameseek inspect ./meeting.frameseek/index.json --verify
 ```
 
 Captions make retrieval more selective. With an OpenAI-compatible API:
@@ -94,6 +95,9 @@ Backends return frame IDs and claims, not timestamps. FrameSeek verifies that
 each ID belongs to the exact set of frames sent to the backend, then obtains the
 timestamp from the index. A model cannot invent `f999999` and turn it into a
 valid citation.
+
+Run `frameseek inspect <index.json> --verify` after copying or restoring an
+index to check every frame path and SHA-256 digest before inference.
 
 Cloud backends receive the selected JPEG frames and the question, not the full
 video. Review [SECURITY.md](SECURITY.md) before processing private material.

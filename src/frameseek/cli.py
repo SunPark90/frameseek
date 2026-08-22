@@ -13,7 +13,7 @@ from .backends import create_backend
 from .errors import FrameSeekError
 from .indexer import create_index
 from .models import VideoIndex, format_timestamp
-from .pipeline import research
+from .pipeline import load_verified_index, research
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -62,6 +62,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     inspect_parser = subparsers.add_parser("inspect", help="show index metadata")
     inspect_parser.add_argument("index", type=Path)
+    inspect_parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="verify every indexed frame path and SHA-256 digest",
+    )
     inspect_parser.add_argument("--json", action="store_true", dest="as_json")
     inspect_parser.set_defaults(handler=_handle_inspect)
 
@@ -135,7 +140,7 @@ def _handle_ask(args: argparse.Namespace) -> int:
 
 
 def _handle_inspect(args: argparse.Namespace) -> int:
-    index = VideoIndex.load(args.index)
+    index = load_verified_index(args.index) if args.verify else VideoIndex.load(args.index)
     if args.as_json:
         print(json.dumps(index.to_dict(), ensure_ascii=False, indent=2))
         return 0
@@ -144,6 +149,8 @@ def _handle_inspect(args: argparse.Namespace) -> int:
     print(f"frames: {len(index.frames)}")
     print(f"captioned: {sum(frame.caption is not None for frame in index.frames)}")
     print(f"schema: {index.schema_version}")
+    if args.verify:
+        print(f"verified: {len(index.frames)} frames")
     return 0
 
 
