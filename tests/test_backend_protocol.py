@@ -79,9 +79,30 @@ class BackendProtocolTests(unittest.TestCase):
         ):
             backend._chat(messages=[], max_tokens=1)
 
+    def test_rejects_oversized_model_request_before_network_call(self) -> None:
+        backend = OpenAICompatibleBackend(
+            model="test-model",
+            request_limit_bytes=16,
+        )
+        with (
+            patch.dict(os.environ, {"OPENAI_API_KEY": "secret"}),
+            patch("frameseek.backends.openai_compatible._MODEL_API_OPENER.open") as open_api,
+            self.assertRaisesRegex(BackendError, "request exceeds 16 bytes"),
+        ):
+            backend._chat(
+                messages=[{"role": "user", "content": "this request is too large"}],
+                max_tokens=1,
+            )
+
+        open_api.assert_not_called()
+
     def test_rejects_invalid_response_limit(self) -> None:
         with self.assertRaises(ValueError):
             OpenAICompatibleBackend(model="test-model", response_limit_bytes=0)
+
+    def test_rejects_invalid_request_limit(self) -> None:
+        with self.assertRaises(ValueError):
+            OpenAICompatibleBackend(model="test-model", request_limit_bytes=0)
 
     def test_rejects_invalid_request_timeout(self) -> None:
         for timeout_seconds in (0, -1, math.inf, math.nan):

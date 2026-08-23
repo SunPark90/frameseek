@@ -24,6 +24,8 @@ Model API requests also use a positive, finite timeout so an unavailable
 endpoint cannot stall inference indefinitely.
 The OpenAI-compatible backend rejects frames larger than 20 MiB before Base64
 encoding, bounding per-frame memory and request growth.
+The complete JSON request is capped at 32 MiB by default before it is sent,
+which bounds aggregate uploads when a question includes multiple frames.
 
 Index files can contain captions derived from private videos. New indexes store
 only the source video's filename, but older indexes may contain its full path.

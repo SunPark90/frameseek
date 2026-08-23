@@ -28,6 +28,7 @@ If the frames are insufficient, say so in the answer and cite the frame(s) showi
 Do not wrap the JSON in Markdown."""
 
 MAX_FRAME_BYTES = 20 * 1024 * 1024
+DEFAULT_REQUEST_LIMIT_BYTES = 32 * 1024 * 1024
 
 
 class _SameOriginRedirectHandler(urllib.request.HTTPRedirectHandler):
@@ -68,6 +69,7 @@ class OpenAICompatibleBackend(ResearchBackend):
         api_key_env: str = "OPENAI_API_KEY",
         timeout_seconds: float = 120.0,
         response_limit_bytes: int = 1024 * 1024,
+        request_limit_bytes: int = DEFAULT_REQUEST_LIMIT_BYTES,
     ) -> None:
         if not model:
             raise ValueError("model is required")
@@ -75,11 +77,14 @@ class OpenAICompatibleBackend(ResearchBackend):
             raise ValueError("timeout_seconds must be positive and finite")
         if response_limit_bytes <= 0:
             raise ValueError("response_limit_bytes must be positive")
+        if request_limit_bytes <= 0:
+            raise ValueError("request_limit_bytes must be positive")
         self.model = model
         self.base_url = base_url.rstrip("/")
         self.api_key_env = api_key_env
         self.timeout_seconds = timeout_seconds
         self.response_limit_bytes = response_limit_bytes
+        self.request_limit_bytes = request_limit_bytes
 
     def caption_frame(self, path: Path, timestamp_seconds: float) -> str:
         content = [
@@ -172,10 +177,15 @@ class OpenAICompatibleBackend(ResearchBackend):
             "temperature": 0,
             "max_tokens": max_tokens,
         }
+        payload_bytes = json.dumps(payload).encode("utf-8")
+        if len(payload_bytes) > self.request_limit_bytes:
+            raise BackendError(
+                f"model API request exceeds {self.request_limit_bytes} bytes"
+            )
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
         request = urllib.request.Request(
             endpoint,
-            data=json.dumps(payload).encode("utf-8"),
+            data=payload_bytes,
             headers=headers,
             method="POST",
         )
