@@ -40,6 +40,17 @@ class RetrievalTests(unittest.TestCase):
         ranked = rank_frames(index, "무슨 일이 일어났나?", top_k=3)
         self.assertEqual([item.frame.id for item in ranked], ["f000000", "f000002", "f000004"])
 
+    def test_timestamp_query_ranks_nearest_frames_without_captions(self) -> None:
+        index = make_index([None] * 10)
+        ranked = rank_frames(index, "00:42 근처에는 무엇이 보이나?", top_k=2)
+        self.assertEqual([item.frame.id for item in ranked], ["f000004", "f000005"])
+        self.assertGreater(ranked[0].score, ranked[1].score)
+
+    def test_multiple_timestamp_query_covers_each_requested_moment(self) -> None:
+        index = make_index(["unrelated caption"] * 10)
+        ranked = rank_frames(index, "Compare 00:20 with 01:10", top_k=2)
+        self.assertEqual([item.frame.id for item in ranked], ["f000002", "f000007"])
+
 
 if __name__ == "__main__":
     unittest.main()

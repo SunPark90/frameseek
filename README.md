@@ -16,7 +16,7 @@ timestamp citations. It is not affiliated with the paper authors.
 
 - deterministic frame extraction through FFmpeg
 - portable JSON indexes with frame hashes and optional captions
-- Korean and English lexical frame retrieval with temporal fallback
+- Korean and English lexical frame retrieval with timestamp-aware temporal selection
 - strict validation that rejects citations to frames the model did not receive
 - OpenAI-compatible vision API backend with no runtime SDK dependency
 - optional local SmolVLM2 backend
@@ -69,6 +69,9 @@ frameseek ask ./meeting.frameseek/index.json \
   --backend openai \
   --model <vision-capable-model>
 ```
+
+Questions containing `MM:SS` or `HH:MM:SS` timestamps retrieve the nearest
+indexed frames, including comparisons such as `Compare 02:10 with 05:30`.
 
 PowerShell uses `$env:OPENAI_API_KEY = "..."` instead of `export`.
 

@@ -8,6 +8,9 @@ from dataclasses import dataclass
 from .models import FrameRecord, VideoIndex
 
 TOKEN_PATTERN = re.compile(r"(?u)\b[^\W_]+\b")
+TIMESTAMP_PATTERN = re.compile(
+    r"(?<![\d:])(?:(\d+):)?([0-5]?\d):([0-5]\d)(?![\d:])"
+)
 
 
 @dataclass(frozen=True)
@@ -24,6 +27,9 @@ def rank_frames(index: VideoIndex, question: str, top_k: int = 8) -> tuple[Ranke
     if top_k <= 0:
         raise ValueError("top_k must be positive")
     limit = min(top_k, len(index.frames))
+    timestamp_hints = _timestamp_hints(question)
+    if timestamp_hints:
+        return _nearest_timestamps(index.frames, timestamp_hints, limit)
     question_tokens = tokenize(question)
     captions = [tokenize(frame.caption or "") for frame in index.frames]
     if not question_tokens or not any(captions):
@@ -51,6 +57,30 @@ def rank_frames(index: VideoIndex, question: str, top_k: int = 8) -> tuple[Ranke
         return _temporal_fallback(index.frames, limit)
     selected = sorted(scored, key=lambda item: (-item.score, item.frame.timestamp_seconds))[:limit]
     return tuple(sorted(selected, key=lambda item: item.frame.timestamp_seconds))
+
+
+def _timestamp_hints(text: str) -> tuple[float, ...]:
+    return tuple(
+        float(int(hours or 0) * 3600 + int(minutes) * 60 + int(seconds))
+        for hours, minutes, seconds in TIMESTAMP_PATTERN.findall(text)
+    )
+
+
+def _nearest_timestamps(
+    frames: tuple[FrameRecord, ...],
+    targets: tuple[float, ...],
+    limit: int,
+) -> tuple[RankedFrame, ...]:
+    distances = [
+        (min(abs(frame.timestamp_seconds - target) for target in targets), frame)
+        for frame in frames
+    ]
+    selected = sorted(distances, key=lambda item: (item[0], item[1].timestamp_seconds))[:limit]
+    ranked = (
+        RankedFrame(frame=frame, score=1.0 / (1.0 + distance))
+        for distance, frame in selected
+    )
+    return tuple(sorted(ranked, key=lambda item: item.frame.timestamp_seconds))
 
 
 def _temporal_fallback(frames: tuple[FrameRecord, ...], limit: int) -> tuple[RankedFrame, ...]:
