@@ -70,6 +70,28 @@ class ModelTests(unittest.TestCase):
             ):
                 VideoIndex.load(path)
 
+    def test_index_save_rejects_output_that_cannot_be_loaded(self) -> None:
+        index = VideoIndex(
+            video=VideoMetadata(source="sample.mp4", duration_seconds=10.0),
+            frames=(
+                FrameRecord(
+                    id="f000001",
+                    timestamp_seconds=1.0,
+                    path="frames/a.jpg",
+                    caption="x" * 100,
+                ),
+            ),
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "index.json"
+            with (
+                patch("frameseek.models.MAX_INDEX_BYTES", 64),
+                self.assertRaisesRegex(IndexFormatError, "exceeds 64 bytes"),
+            ):
+                index.save(path)
+
+            self.assertFalse(path.exists())
+
     def test_index_load_rejects_invalid_utf8(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "index.json"

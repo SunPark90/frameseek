@@ -114,13 +114,15 @@ class VideoIndex:
         self.validate()
         destination = Path(path)
         destination.parent.mkdir(parents=True, exist_ok=True)
-        payload = json.dumps(self.to_dict(), ensure_ascii=False, indent=2) + "\n"
+        payload = (
+            json.dumps(self.to_dict(), ensure_ascii=False, indent=2) + "\n"
+        ).encode("utf-8")
+        if len(payload) > MAX_INDEX_BYTES:
+            raise IndexFormatError(f"index exceeds {MAX_INDEX_BYTES} bytes: {destination}")
         temporary: Path | None = None
         try:
             with tempfile.NamedTemporaryFile(
-                mode="w",
-                encoding="utf-8",
-                newline="\n",
+                mode="wb",
                 dir=destination.parent,
                 prefix=f".{destination.name}.",
                 suffix=".tmp",

@@ -32,6 +32,8 @@ only the source video's filename, but older indexes may contain its full path.
 Treat indexes as sensitive data and do not commit them to a public repository.
 Index loading reads at most 16 MiB, limiting memory use from malformed or
 unexpectedly large JSON files.
+Index writes enforce the same limit, so FrameSeek does not create an index that
+it will later reject as oversized.
 
 Before a frame is sent to any backend, FrameSeek requires its path to stay
 inside the index directory and verifies its SHA-256 digest when the index
