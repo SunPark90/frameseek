@@ -17,6 +17,14 @@ class SmolVLM2Backend(ResearchBackend):
         model: str = "HuggingFaceTB/SmolVLM2-256M-Video-Instruct",
         max_new_tokens: int = 1200,
     ) -> None:
+        if not model.strip():
+            raise ValueError("model is required")
+        if (
+            isinstance(max_new_tokens, bool)
+            or not isinstance(max_new_tokens, int)
+            or max_new_tokens <= 0
+        ):
+            raise ValueError("max_new_tokens must be a positive integer")
         self.model = model
         self.max_new_tokens = max_new_tokens
         self._processor: Any = None

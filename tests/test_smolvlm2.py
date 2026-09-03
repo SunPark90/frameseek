@@ -1,7 +1,7 @@
 import unittest
 from pathlib import Path
 
-from frameseek.backends.smolvlm2 import _open_rgb_image
+from frameseek.backends.smolvlm2 import SmolVLM2Backend, _open_rgb_image
 
 
 class FakeSourceImage:
@@ -32,6 +32,18 @@ class FakeImageModule:
 
 
 class SmolVLM2Tests(unittest.TestCase):
+    def test_rejects_empty_model_name(self) -> None:
+        with self.assertRaisesRegex(ValueError, "model is required"):
+            SmolVLM2Backend(model="  ")
+
+    def test_rejects_invalid_max_new_tokens(self) -> None:
+        for max_new_tokens in (0, -1, True, 1.5):
+            with (
+                self.subTest(max_new_tokens=max_new_tokens),
+                self.assertRaisesRegex(ValueError, "positive integer"),
+            ):
+                SmolVLM2Backend(max_new_tokens=max_new_tokens)
+
     def test_rgb_conversion_closes_source_image(self) -> None:
         converted = object()
         source = FakeSourceImage(converted)
