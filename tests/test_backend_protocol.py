@@ -97,15 +97,29 @@ class BackendProtocolTests(unittest.TestCase):
         open_api.assert_not_called()
 
     def test_rejects_invalid_response_limit(self) -> None:
-        with self.assertRaises(ValueError):
-            OpenAICompatibleBackend(model="test-model", response_limit_bytes=0)
+        for response_limit_bytes in (0, 1.5, True):
+            with (
+                self.subTest(response_limit_bytes=response_limit_bytes),
+                self.assertRaisesRegex(ValueError, "positive integer"),
+            ):
+                OpenAICompatibleBackend(
+                    model="test-model",
+                    response_limit_bytes=response_limit_bytes,
+                )
 
     def test_rejects_invalid_request_limit(self) -> None:
-        with self.assertRaises(ValueError):
-            OpenAICompatibleBackend(model="test-model", request_limit_bytes=0)
+        for request_limit_bytes in (0, 1.5, True):
+            with (
+                self.subTest(request_limit_bytes=request_limit_bytes),
+                self.assertRaisesRegex(ValueError, "positive integer"),
+            ):
+                OpenAICompatibleBackend(
+                    model="test-model",
+                    request_limit_bytes=request_limit_bytes,
+                )
 
     def test_rejects_invalid_request_timeout(self) -> None:
-        for timeout_seconds in (0, -1, math.inf, math.nan):
+        for timeout_seconds in (0, -1, math.inf, math.nan, True, "120"):
             with (
                 self.subTest(timeout_seconds=timeout_seconds),
                 self.assertRaisesRegex(ValueError, "positive and finite"),
@@ -114,6 +128,10 @@ class BackendProtocolTests(unittest.TestCase):
                     model="test-model",
                     timeout_seconds=timeout_seconds,
                 )
+
+    def test_rejects_blank_model_name(self) -> None:
+        with self.assertRaisesRegex(ValueError, "model is required"):
+            OpenAICompatibleBackend(model="   ")
 
     def test_api_key_is_not_forwarded_across_redirects(self) -> None:
         backend = OpenAICompatibleBackend(model="test-model")

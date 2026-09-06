@@ -71,14 +71,27 @@ class OpenAICompatibleBackend(ResearchBackend):
         response_limit_bytes: int = 1024 * 1024,
         request_limit_bytes: int = DEFAULT_REQUEST_LIMIT_BYTES,
     ) -> None:
-        if not model:
+        if not isinstance(model, str) or not model.strip():
             raise ValueError("model is required")
-        if not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
+        if (
+            isinstance(timeout_seconds, bool)
+            or not isinstance(timeout_seconds, (int, float))
+            or not math.isfinite(timeout_seconds)
+            or timeout_seconds <= 0
+        ):
             raise ValueError("timeout_seconds must be positive and finite")
-        if response_limit_bytes <= 0:
-            raise ValueError("response_limit_bytes must be positive")
-        if request_limit_bytes <= 0:
-            raise ValueError("request_limit_bytes must be positive")
+        if (
+            isinstance(response_limit_bytes, bool)
+            or not isinstance(response_limit_bytes, int)
+            or response_limit_bytes <= 0
+        ):
+            raise ValueError("response_limit_bytes must be a positive integer")
+        if (
+            isinstance(request_limit_bytes, bool)
+            or not isinstance(request_limit_bytes, int)
+            or request_limit_bytes <= 0
+        ):
+            raise ValueError("request_limit_bytes must be a positive integer")
         self.model = model
         self.base_url = base_url.rstrip("/")
         self.api_key_env = api_key_env
