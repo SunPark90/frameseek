@@ -101,6 +101,8 @@ valid citation.
 
 Run `frameseek inspect <index.json> --verify` after copying or restoring an
 index to check every frame path and SHA-256 digest before inference.
+Use `frameseek ask <index.json> <question> --verify-index` when the whole
+index must be verified before any selected frame is sent to a backend.
 
 Cloud backends receive the selected JPEG frames and the question, not the full
 video. Review [SECURITY.md](SECURITY.md) before processing private material.

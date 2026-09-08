@@ -56,6 +56,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     ask_parser.add_argument("--top-k", type=int, default=8)
     ask_parser.add_argument("--allow-uncited", action="store_true")
+    ask_parser.add_argument(
+        "--verify-index",
+        action="store_true",
+        help="verify every indexed frame before sending any frame to the backend",
+    )
     ask_parser.add_argument("--json", action="store_true", dest="as_json")
     _add_backend_options(ask_parser)
     ask_parser.set_defaults(handler=_handle_ask)
@@ -122,6 +127,7 @@ def _handle_ask(args: argparse.Namespace) -> int:
         backend,
         top_k=args.top_k,
         allow_uncited=args.allow_uncited,
+        verify_index=args.verify_index,
     )
     if args.as_json:
         print(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))

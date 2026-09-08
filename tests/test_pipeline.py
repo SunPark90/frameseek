@@ -107,6 +107,15 @@ class PipelineTests(unittest.TestCase):
         with self.assertRaisesRegex(EvidenceError, "failed SHA-256 verification"):
             research(self.index_path, "red ball", FakeBackend(), top_k=1)
 
+    def test_research_can_verify_every_frame_before_backend_call(self) -> None:
+        (self.root / "frames" / "3.jpg").write_bytes(b"tampered-image")
+        backend = FakeBackend()
+
+        with self.assertRaisesRegex(EvidenceError, "failed SHA-256 verification"):
+            research(self.index_path, "red ball", backend, top_k=1, verify_index=True)
+
+        self.assertEqual(backend.received, ())
+
     def test_verified_index_checks_every_frame(self) -> None:
         (self.root / "frames" / "3.jpg").write_bytes(b"tampered-image")
 

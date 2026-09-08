@@ -33,12 +33,13 @@ def research(
     *,
     top_k: int = 8,
     allow_uncited: bool = False,
+    verify_index: bool = False,
 ) -> ResearchAnswer:
     normalized_question = question.strip()
     if not normalized_question:
         raise ValueError("question cannot be empty")
     source_path = Path(index_path)
-    index = VideoIndex.load(source_path)
+    index = load_verified_index(source_path) if verify_index else VideoIndex.load(source_path)
     ranked = rank_frames(index, normalized_question, top_k=top_k)
     prepared = tuple(
         PreparedFrame(
