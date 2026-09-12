@@ -39,6 +39,8 @@ Before a frame is sent to any backend, FrameSeek requires its path to stay
 inside the index directory and verifies its SHA-256 digest when the index
 provides one. Keep `index.json` and its `frames/` directory together; modifying
 an indexed frame invalidates that index by design.
+Index validation rejects absolute paths and parent-directory traversal before
+the index can be saved or loaded.
 Malformed SHA-256 fields are rejected while the index is loaded, before any
 referenced frame is opened.
 

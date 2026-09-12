@@ -8,7 +8,7 @@ import tempfile
 from contextlib import suppress
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
 from .errors import IndexFormatError
@@ -68,6 +68,16 @@ class FrameRecord:
             raise IndexFormatError("frame.id is required")
         if not self.path:
             raise IndexFormatError(f"frame {self.id!r} has no path")
+        posix_path = PurePosixPath(self.path)
+        windows_path = PureWindowsPath(self.path)
+        if (
+            posix_path.is_absolute()
+            or windows_path.is_absolute()
+            or windows_path.drive
+            or ".." in posix_path.parts
+            or ".." in windows_path.parts
+        ):
+            raise IndexFormatError(f"frame {self.id!r} path must stay inside the index directory")
         if not math.isfinite(self.timestamp_seconds) or self.timestamp_seconds < 0:
             raise IndexFormatError(f"frame {self.id!r} has an invalid timestamp")
         if self.timestamp_seconds > duration_seconds + 0.001:

@@ -45,6 +45,18 @@ class ModelTests(unittest.TestCase):
         with self.assertRaisesRegex(IndexFormatError, "outside the video duration"):
             index.validate()
 
+    def test_index_rejects_frame_paths_outside_its_directory(self) -> None:
+        for path in ("../outside.jpg", "/tmp/outside.jpg", r"C:\\outside.jpg"):
+            index = VideoIndex(
+                video=VideoMetadata(source="sample.mp4", duration_seconds=2.0),
+                frames=(FrameRecord(id="f1", timestamp_seconds=1.0, path=path),),
+            )
+            with (
+                self.subTest(path=path),
+                self.assertRaisesRegex(IndexFormatError, "must stay inside"),
+            ):
+                index.validate()
+
     def test_index_rejects_malformed_frame_digest(self) -> None:
         index = VideoIndex(
             video=VideoMetadata(source="sample.mp4", duration_seconds=2.0),
