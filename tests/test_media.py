@@ -25,8 +25,11 @@ class MediaTests(unittest.TestCase):
             build_sample_timestamps(0)
         with self.assertRaises(ValueError):
             build_sample_timestamps(10, interval_seconds=0)
-        with self.assertRaises(ValueError):
-            build_sample_timestamps(10, max_frames=0)
+        for max_frames in (0, -1, 1.5, True):
+            with self.subTest(max_frames=max_frames), self.assertRaisesRegex(
+                ValueError, "positive integer"
+            ):
+                build_sample_timestamps(10, max_frames=max_frames)
 
     def test_fraction_parser(self) -> None:
         self.assertAlmostEqual(parse_fraction("30000/1001") or 0, 29.97002997)

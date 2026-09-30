@@ -20,8 +20,8 @@ def build_sample_timestamps(
         raise ValueError("duration_seconds must be positive and finite")
     if not math.isfinite(interval_seconds) or interval_seconds <= 0:
         raise ValueError("interval_seconds must be positive and finite")
-    if max_frames <= 0:
-        raise ValueError("max_frames must be positive")
+    if isinstance(max_frames, bool) or not isinstance(max_frames, int) or max_frames <= 0:
+        raise ValueError("max_frames must be a positive integer")
 
     estimated_count = max(1, math.ceil(duration_seconds / interval_seconds))
     count = min(max_frames, estimated_count)
